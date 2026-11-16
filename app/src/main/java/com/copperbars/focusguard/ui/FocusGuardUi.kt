@@ -225,6 +225,15 @@ private fun HomeScreen(
             MetricCard("Bugünkü kullanım", formatDuration(total), Modifier.weight(1f))
             MetricCard("Takip edilen", trackedApps.size.toString(), Modifier.weight(1f))
         }
+        if (settings.globalDailyLimitMinutes > 0) {
+            val remaining = (settings.globalDailyLimitMinutes * 60_000L - total).coerceAtLeast(0L)
+            MetricCard(
+                "Günlük toplam limit",
+                settings.globalDailyLimitMinutes.toString() + " dk",
+                Modifier.fillMaxWidth(),
+                "Kalan: " + formatDuration(remaining)
+            )
+        }
         MetricCard(
             "En çok kullanılan",
             top?.let { app -> trackedApps.firstOrNull { it.packageName == app.packageName }?.label ?: app.packageName }
@@ -715,6 +724,9 @@ private fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val pinSecurity = remember { PinSecurity(repository) }
     var message by remember(settings.warningMessage) { mutableStateOf(settings.warningMessage) }
+    var globalLimit by remember(settings.globalDailyLimitMinutes) {
+        mutableStateOf(settings.globalDailyLimitMinutes.toString())
+    }
     var pin by remember { mutableStateOf("") }
     var oldPin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
@@ -737,6 +749,33 @@ private fun SettingsScreen(
                 Button(onClick = onOpenOverlaySettings, modifier = Modifier.fillMaxWidth()) {
                     Text("Üstte gösterme iznini aç")
                 }
+            }
+        }
+
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Günlük toplam kullanım limiti", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(
+                    "FocusGuard'a eklediğin uygulamaların günlük toplamını sınırlar. 0 girersen bu özellik kapanır.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                OutlinedTextField(
+                    value = globalLimit,
+                    onValueChange = { globalLimit = it.filter(Char::isDigit).take(4) },
+                    label = { Text("Dakika (0 = kapalı)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            repository.setGlobalDailyLimit(globalLimit.toIntOrNull() ?: 0)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Toplam limiti kaydet") }
             }
         }
 
