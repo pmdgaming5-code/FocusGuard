@@ -25,7 +25,8 @@ data class AppSettings(
     val pinSalt: String = "",
     val pinVerifier: String = "",
     val failedPinAttempts: Int = 0,
-    val pinLockUntilMillis: Long = 0L
+    val pinLockUntilMillis: Long = 0L,
+    val darkTheme: Boolean = true
 )
 
 class FocusRepository(context: Context) {
@@ -41,6 +42,7 @@ class FocusRepository(context: Context) {
         val pinVerifier = stringPreferencesKey("pin_verifier")
         val pinFailures = intPreferencesKey("pin_failures")
         val pinLockUntil = longPreferencesKey("pin_lock_until")
+        val darkTheme = booleanPreferencesKey("dark_theme")
     }
 
     val settings: Flow<AppSettings> = store.data.map { p ->
@@ -51,7 +53,8 @@ class FocusRepository(context: Context) {
             pinSalt = p[Keys.pinSalt] ?: "",
             pinVerifier = p[Keys.pinVerifier] ?: "",
             failedPinAttempts = p[Keys.pinFailures] ?: 0,
-            pinLockUntilMillis = p[Keys.pinLockUntil] ?: 0L
+            pinLockUntilMillis = p[Keys.pinLockUntil] ?: 0L,
+            darkTheme = p[Keys.darkTheme] ?: true
         )
     }
 
@@ -91,6 +94,10 @@ class FocusRepository(context: Context) {
 
     suspend fun setMonitorEnabled(enabled: Boolean) {
         store.edit { it[Keys.monitor] = enabled }
+    }
+
+    suspend fun setDarkTheme(enabled: Boolean) {
+        store.edit { it[Keys.darkTheme] = enabled }
     }
 
     suspend fun savePinRecord(salt: String, verifier: String) {
