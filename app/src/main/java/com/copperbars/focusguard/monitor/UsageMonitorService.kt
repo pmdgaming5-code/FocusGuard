@@ -11,8 +11,6 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.os.Handler
-import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -73,10 +71,15 @@ class UsageMonitorService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            monitorJob?.cancel()
             overlay?.hide()
-            scope.launch { repository.setMonitorEnabled(false) }
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            scope.launch {
+                repository.setMonitorEnabled(false)
+                withContext(Dispatchers.Main.immediate) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            }
             return START_NOT_STICKY
         }
 
