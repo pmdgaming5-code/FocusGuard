@@ -17,13 +17,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.copperbars.focusguard.MainActivity
-import com.copperbars.focusguard.R
 import com.copperbars.focusguard.data.FocusRepository
 import com.copperbars.focusguard.security.PinCheck
 import com.copperbars.focusguard.security.PinSecurity
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
