@@ -399,6 +399,7 @@ private fun AppsScreen(
                                         }
                                     )
                                     TextButton(onClick = { editing = config }) { Text("Düzenle") }
+                                    TextButton(onClick = { onRemove(info.packageName) }) { Text("Kaldır") }
                                 }
                             }
                         }
