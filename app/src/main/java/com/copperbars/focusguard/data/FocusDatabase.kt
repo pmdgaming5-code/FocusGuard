@@ -75,7 +75,7 @@ interface FocusDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveDailyUsage(usage: DailyUsageEntity)
 
-    @Query("SELECT * FROM daily_usage WHERE dayKey = :dayKey ORDER BY totalMillis DESC")
+    @Query("SELECT d.* FROM daily_usage AS d INNER JOIN tracked_apps AS a ON a.packageName = d.packageName WHERE d.dayKey = :dayKey ORDER BY d.totalMillis DESC")
     fun observeDailyUsage(dayKey: String): Flow<List<DailyUsageEntity>>
 
     @Insert
