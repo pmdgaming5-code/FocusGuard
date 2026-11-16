@@ -113,12 +113,17 @@ class UsageMonitorService : Service() {
                     when (event.eventType) {
                         UsageEvents.Event.MOVE_TO_FOREGROUND,
                         UsageEvents.Event.ACTIVITY_RESUMED -> {
+                            val previous = foregroundPackage
+                            if (previous != null && previous != packageName) {
+                                repository.resetSessionUsage(previous)
+                            }
                             foregroundPackage = packageName
                         }
-                        UsageEvents.Event.MOVE_TO_BACKGROUND,
-                        UsageEvents.Event.ACTIVITY_STOPPED -> {
-                            if (foregroundPackage == packageName) foregroundPackage = null
-                            repository.resetSessionUsage(packageName)
+                        UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                            if (foregroundPackage == packageName) {
+                                foregroundPackage = null
+                                repository.resetSessionUsage(packageName)
+                            }
                         }
                     }
                 }
@@ -191,8 +196,7 @@ class UsageMonitorService : Service() {
                 when (event.eventType) {
                     UsageEvents.Event.MOVE_TO_FOREGROUND,
                     UsageEvents.Event.ACTIVITY_RESUMED -> current = event.packageName
-                    UsageEvents.Event.MOVE_TO_BACKGROUND,
-                    UsageEvents.Event.ACTIVITY_STOPPED -> if (current == event.packageName) current = null
+                    UsageEvents.Event.MOVE_TO_BACKGROUND -> if (current == event.packageName) current = null
                 }
             }
             current
