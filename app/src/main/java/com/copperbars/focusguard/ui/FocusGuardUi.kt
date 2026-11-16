@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.copperbars.focusguard.LaunchableApp
@@ -530,6 +531,7 @@ private fun DeviceLockScreen(
     var confirm by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var pinToExit by remember { mutableStateOf("") }
+    var exitFeedback by remember { mutableStateOf("") }
     var info by remember { mutableStateOf("") }
     val owner = remember { KioskController.isDeviceOwner(activity) }
     val settings by repository.settings.collectAsState(initial = AppSettings())
@@ -585,11 +587,13 @@ private fun DeviceLockScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Devam etmek için FocusGuard PIN kodunu gir.")
+                    if (exitFeedback.isNotBlank()) Text(exitFeedback, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                     OutlinedTextField(
                         value = pinToExit,
                         onValueChange = { pinToExit = it.filter(Char::isDigit).take(12) },
                         label = { Text("PIN") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
                         singleLine = true
                     )
                 }
@@ -601,14 +605,15 @@ private fun DeviceLockScreen(
                             PinCheck.Success -> {
                                 KioskController.stop(activity)
                                 info = "PIN doğrulandı. Kiosk modundan çıkış istendi."
+                                exitFeedback = ""
                                 confirmExit = false
                                 pinToExit = ""
                             }
-                            PinCheck.Invalid -> info = "PIN yanlış."
-                            PinCheck.NotConfigured -> info = "PIN ayarlanmamış."
+                            PinCheck.Invalid -> exitFeedback = "PIN yanlış."
+                            PinCheck.NotConfigured -> exitFeedback = "PIN ayarlanmamış."
                             is PinCheck.Locked -> {
                                 val seconds = ((check.untilMillis - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L) + 1
-                                info = "Çok fazla hatalı deneme. $seconds saniye bekle."
+                                exitFeedback = "Çok fazla hatalı deneme. $seconds saniye bekle."
                             }
                         }
                     }
@@ -760,7 +765,7 @@ private fun SettingsScreen(
                 Text("Şifre güvenliği", fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text(
                     if (settings.pinVerifier.isBlank()) "Henüz PIN ayarlanmadı."
-                    else "PIN kayıtlı. Değiştirmek için yeni PIN'i iki kez gir.",
+                    else "PIN kayıtlı. Değiştirmek için mevcut PIN'i doğrula ve yeni PIN'i iki kez gir.",
                     fontSize = 12.sp
                 )
                 if (settings.pinVerifier.isNotBlank()) {
@@ -769,6 +774,7 @@ private fun SettingsScreen(
                         onValueChange = { oldPin = it.filter(Char::isDigit).take(12) },
                         label = { Text("Mevcut PIN") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -778,6 +784,7 @@ private fun SettingsScreen(
                     onValueChange = { pin = it.filter(Char::isDigit).take(12) },
                     label = { Text("Yeni PIN (4-12 rakam)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -786,6 +793,7 @@ private fun SettingsScreen(
                     onValueChange = { confirmPin = it.filter(Char::isDigit).take(12) },
                     label = { Text("PIN'i tekrar gir") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
