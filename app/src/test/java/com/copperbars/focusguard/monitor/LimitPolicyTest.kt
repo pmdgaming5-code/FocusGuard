@@ -31,6 +31,31 @@ class LimitPolicyTest {
     }
 
     @Test
+    fun disabledLimitsDoNotApplyDailyOrSessionThresholds() {
+        val app = TrackedAppEntity(
+            "sample.app",
+            "Sample",
+            dailyLimitMinutes = 1,
+            sessionLimitMinutes = 1,
+            sessionUsageMillis = 60_000L,
+            limitsEnabled = false
+        )
+        assertFalse(LimitPolicy.isBlocked(app, 60_000L, false))
+    }
+
+    @Test
+    fun focusBlockStillAppliesWhenTimeLimitsAreDisabled() {
+        val app = TrackedAppEntity(
+            "sample.app",
+            "Sample",
+            dailyLimitMinutes = 1,
+            limitsEnabled = false,
+            focusBlocked = true
+        )
+        assertTrue(LimitPolicy.isBlocked(app, 60_000L, true))
+    }
+
+    @Test
     fun focusBlocksOnlyWhenSelectedAppIsMarked() {
         val blockedApp = TrackedAppEntity("sample.app", "Sample", focusBlocked = true)
         val allowedApp = TrackedAppEntity("other.app", "Other", focusBlocked = false)
