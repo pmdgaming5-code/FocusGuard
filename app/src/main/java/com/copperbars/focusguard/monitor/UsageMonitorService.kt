@@ -11,6 +11,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -32,6 +34,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 
 class UsageMonitorService : Service() {
@@ -57,7 +60,7 @@ class UsageMonitorService : Service() {
     private lateinit var pinSecurity: PinSecurity
     private var monitorJob: Job? = null
     private var overlay: UsageOverlay? = null
-    private var blockedPackage: String? = null
+    @Volatile private var blockedPackage: String? = null
     private val bypassUntilElapsed = mutableMapOf<String, Long>()
 
     override fun onCreate() {
@@ -156,23 +159,25 @@ class UsageMonitorService : Service() {
 
                     if (shouldBlock && !isBypassed && settings.pinVerifier.isNotBlank()) {
                         val label = app.label.ifBlank { app.packageName }
-                        overlay?.show(app.packageName, label, settings.warningMessage)
+                        withContext(Dispatchers.Main.immediate) {
+                            overlay?.show(app.packageName, label, settings.warningMessage)
+                        }
                         blockedPackage = app.packageName
-                    } else if (overlay?.isVisibleFor(app.packageName) == true && !shouldBlock) {
-                        overlay?.hide()
+                    } else if (blockedPackage == app.packageName && !shouldBlock) {
+                        withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                         blockedPackage = null
                     }
                 } else {
-                    overlay?.hide()
+                    withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                     blockedPackage = null
                 }
 
                 if (blockedPackage != null && activePackage != blockedPackage) {
-                    overlay?.hide()
+                    withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                     blockedPackage = null
                 }
             } catch (_: SecurityException) {
-                overlay?.hide()
+                withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                 updateNotification("Kullanım erişimi kaldırıldı. Ayarlardan yeniden izin ver.")
             } catch (_: Exception) {
                 // A transient UsageStats or database issue should not crash the monitoring service.
@@ -208,14 +213,20 @@ class UsageMonitorService : Service() {
                     if (packageName != null) {
                         bypassUntilElapsed[packageName] = SystemClock.elapsedRealtime() + 5 * 60_000L
                     }
-                    overlay?.hide()
+                    withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                     blockedPackage = null
                 }
-                PinCheck.Invalid -> overlay?.showPinError("PIN yanlış. Kilit devam ediyor.")
-                PinCheck.NotConfigured -> overlay?.showPinError("Önce FocusGuard ayarlarından PIN oluştur.")
+                PinCheck.Invalid -> withContext(Dispatchers.Main.immediate) {
+                    overlay?.showPinError("PIN yanlış. Kilit devam ediyor.")
+                }
+                PinCheck.NotConfigured -> withContext(Dispatchers.Main.immediate) {
+                    overlay?.showPinError("Önce FocusGuard ayarlarından PIN oluştur.")
+                }
                 is PinCheck.Locked -> {
                     val seconds = ((result.untilMillis - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L) + 1
-                    overlay?.showPinError("Çok fazla hatalı deneme. $seconds saniye bekle.")
+                    withContext(Dispatchers.Main.immediate) {
+                        overlay?.showPinError("Çok fazla hatalı deneme. " + seconds + " saniye bekle.")
+                    }
                 }
             }
         }
