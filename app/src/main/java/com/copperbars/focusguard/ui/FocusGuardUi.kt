@@ -60,6 +60,7 @@ import com.copperbars.focusguard.data.FocusRepository
 import com.copperbars.focusguard.data.FocusSessionEntity
 import com.copperbars.focusguard.data.TrackedAppEntity
 import com.copperbars.focusguard.security.PinSecurity
+import com.copperbars.focusguard.security.PinCheck
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -173,6 +174,7 @@ fun FocusGuardRoot(
                     )
                     AppTab.DEVICE -> DeviceLockScreen(
                         activity = activity,
+                        repository = repository,
                         trackedApps = trackedApps
                     )
                     AppTab.STATS -> StatisticsScreen(
@@ -520,10 +522,19 @@ private fun FocusScreen(
 }
 
 @Composable
-private fun DeviceLockScreen(activity: Activity, trackedApps: List<TrackedAppEntity>) {
+private fun DeviceLockScreen(
+    activity: Activity,
+    repository: FocusRepository,
+    trackedApps: List<TrackedAppEntity>
+) {
     var confirm by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
+    var pinToExit by remember { mutableStateOf("") }
     var info by remember { mutableStateOf("") }
     val owner = remember { KioskController.isDeviceOwner(activity) }
+    val settings by repository.settings.collectAsState(initial = AppSettings())
+    val scope = rememberCoroutineScope()
+    val pinSecurity = remember { PinSecurity(repository) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
@@ -547,16 +558,16 @@ private fun DeviceLockScreen(activity: Activity, trackedApps: List<TrackedAppEnt
                 }
                 Button(
                     onClick = { confirm = true },
-                    enabled = owner,
+                    enabled = owner && settings.pinVerifier.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Kiosk modunu başlat") }
+                if (settings.pinVerifier.isBlank()) {
+                    Text("Kiosk modundan PIN ile çıkış yapabilmek için önce Ayarlar bölümünde PIN oluştur.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
                 OutlinedButton(
-                    onClick = {
-                        KioskController.stop(activity)
-                        info = "Android Lock Task modundan çıkış istendi."
-                    },
+                    onClick = { confirmExit = true },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Kiosk modundan çık") }
+                ) { Text("PIN ile kiosk modundan çık") }
                 if (info.isNotBlank()) Text(info, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
             }
         }
@@ -564,6 +575,48 @@ private fun DeviceLockScreen(activity: Activity, trackedApps: List<TrackedAppEnt
             "Kiosk izin listesi, Odak modunda engellenmeyen takipli uygulamalardan oluşur. Android Ayarları ve telefon arama uygulamaları kurtarma amacıyla listeye eklenir.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+    }
+
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = { confirmExit = false; pinToExit = "" },
+            title = { Text("Kiosk modundan çıkış") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Devam etmek için FocusGuard PIN kodunu gir.")
+                    OutlinedTextField(
+                        value = pinToExit,
+                        onValueChange = { pinToExit = it.filter(Char::isDigit).take(12) },
+                        label = { Text("PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    scope.launch {
+                        when (val check = pinSecurity.verify(pinToExit)) {
+                            PinCheck.Success -> {
+                                KioskController.stop(activity)
+                                info = "PIN doğrulandı. Kiosk modundan çıkış istendi."
+                                confirmExit = false
+                                pinToExit = ""
+                            }
+                            PinCheck.Invalid -> info = "PIN yanlış."
+                            PinCheck.NotConfigured -> info = "PIN ayarlanmamış."
+                            is PinCheck.Locked -> {
+                                val seconds = ((check.untilMillis - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L) + 1
+                                info = "Çok fazla hatalı deneme. $seconds saniye bekle."
+                            }
+                        }
+                    }
+                }) { Text("Doğrula ve çık") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmExit = false; pinToExit = "" }) { Text("İptal") }
+            }
         )
     }
 
@@ -660,6 +713,7 @@ private fun SettingsScreen(
     val pinSecurity = remember { PinSecurity(repository) }
     var message by remember(settings.warningMessage) { mutableStateOf(settings.warningMessage) }
     var pin by remember { mutableStateOf("") }
+    var oldPin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var feedback by remember { mutableStateOf("") }
 
@@ -709,6 +763,16 @@ private fun SettingsScreen(
                     else "PIN kayıtlı. Değiştirmek için yeni PIN'i iki kez gir.",
                     fontSize = 12.sp
                 )
+                if (settings.pinVerifier.isNotBlank()) {
+                    OutlinedTextField(
+                        value = oldPin,
+                        onValueChange = { oldPin = it.filter(Char::isDigit).take(12) },
+                        label = { Text("Mevcut PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it.filter(Char::isDigit).take(12) },
@@ -728,14 +792,18 @@ private fun SettingsScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            feedback = if (pin != confirmPin) {
-                                "PIN doğrulaması eşleşmedi."
-                            } else if (pinSecurity.setPin(pin)) {
-                                pin = ""
-                                confirmPin = ""
-                                "PIN güvenli biçimde kaydedildi."
-                            } else {
-                                "PIN 4-12 rakamdan oluşmalı."
+                            val oldPinValid = settings.pinVerifier.isBlank() ||
+                                pinSecurity.verify(oldPin) is PinCheck.Success
+                            feedback = when {
+                                !oldPinValid -> "Mevcut PIN doğrulanamadı."
+                                pin != confirmPin -> "PIN doğrulaması eşleşmedi."
+                                pinSecurity.setPin(pin) -> {
+                                    pin = ""
+                                    oldPin = ""
+                                    confirmPin = ""
+                                    "PIN güvenli biçimde kaydedildi."
+                                }
+                                else -> "PIN 4-12 rakamdan oluşmalı."
                             }
                         }
                     },
