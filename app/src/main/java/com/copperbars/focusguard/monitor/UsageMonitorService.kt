@@ -151,12 +151,7 @@ class UsageMonitorService : Service() {
 
                 if (app != null) {
                     val dailyMillis = repository.getDailyUsage(app.packageName)
-                    val dailyReached = app.dailyLimitMinutes > 0 &&
-                        dailyMillis >= app.dailyLimitMinutes * 60_000L
-                    val sessionReached = app.sessionLimitMinutes > 0 &&
-                        app.sessionUsageMillis >= app.sessionLimitMinutes * 60_000L
-                    val focusBlocked = isFocusActive && app.focusBlocked
-                    val shouldBlock = dailyReached || sessionReached || focusBlocked
+                    val shouldBlock = LimitPolicy.isBlocked(app, dailyMillis, isFocusActive)
                     val isBypassed = (bypassUntilElapsed[app.packageName] ?: 0L) > currentElapsed
 
                     if (shouldBlock && !isBypassed && settings.pinVerifier.isNotBlank()) {
