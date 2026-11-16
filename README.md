@@ -7,6 +7,9 @@ Kotlin ve Jetpack Compose ile geliştirilen, cihazda yerel çalışan Android od
 - Android 12 ve üzeri (minSdk 31), Material 3 arayüz.
 - Launcher üzerinden açılabilen uygulamaları listeleme.
 - Her uygulama için günlük limit ve tek oturum limiti.
+- Uygulama limitlerini silmeden geçici olarak açıp kapatma.
+- Yalnızca takip edilen uygulamaların günlük kullanımına göre genel toplam limit.
+- Uygulama kartlarında bugünkü kullanım, kalan günlük süre ve oturum kullanımı.
 - UsageStatsManager olayları ile ön plandaki uygulamanın kullanımını takip etme.
 - Süre dolduğunda kullanıcı izniyle tam ekran uygulama üstü uyarı.
 - Özelleştirilebilir Türkçe odak mesajı.
