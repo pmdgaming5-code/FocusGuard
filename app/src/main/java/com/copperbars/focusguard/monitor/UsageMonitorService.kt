@@ -124,7 +124,9 @@ class UsageMonitorService : Service() {
                             val previous = foregroundPackage
                             if (previous != null && previous != packageName) {
                                 repository.resetSessionUsage(previous)
-                                bypassUntilElapsed.remove(previous)
+                                if (bypassUntilElapsed[previous] == Long.MAX_VALUE) {
+                                    bypassUntilElapsed.remove(previous)
+                                }
                             }
                             foregroundPackage = packageName
                         }
@@ -132,7 +134,9 @@ class UsageMonitorService : Service() {
                             if (foregroundPackage == packageName) {
                                 foregroundPackage = null
                                 repository.resetSessionUsage(packageName)
-                                bypassUntilElapsed.remove(packageName)
+                                if (bypassUntilElapsed[packageName] == Long.MAX_VALUE) {
+                                    bypassUntilElapsed.remove(packageName)
+                                }
                             }
                         }
                     }
