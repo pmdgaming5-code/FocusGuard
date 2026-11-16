@@ -3,6 +3,9 @@ package com.copperbars.focusguard.monitor
 import com.copperbars.focusguard.data.TrackedAppEntity
 
 object LimitPolicy {
+    fun isGlobalDailyLimitReached(limitMinutes: Int, totalUsedMillis: Long): Boolean =
+        limitMinutes > 0 && totalUsedMillis >= limitMinutes.toLong() * 60_000L
+
     fun isBlocked(
         app: TrackedAppEntity,
         dailyUsedMillis: Long,
