@@ -91,6 +91,7 @@ class UsageMonitorService : Service() {
             }
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
         } catch (error: Exception) {
+            scope.launch { repository.setMonitorEnabled(false) }
             stopSelf()
             return START_NOT_STICKY
         }
@@ -111,6 +112,7 @@ class UsageMonitorService : Service() {
         while (scope.isActive) {
             val nowWall = System.currentTimeMillis()
             try {
+                if (nowWall <= queryFrom) queryFrom = nowWall - 1_000L
                 val events = usageManager.queryEvents(queryFrom, nowWall)
                 val event = UsageEvents.Event()
                 while (events.hasNextEvent()) {
@@ -182,8 +184,14 @@ class UsageMonitorService : Service() {
                     blockedPackage = null
                 }
             } catch (_: SecurityException) {
-                withContext(Dispatchers.Main.immediate) { overlay?.hide() }
-                updateNotification("Kullanım erişimi kaldırıldı. Ayarlardan yeniden izin ver.")
+                repository.setMonitorEnabled(false)
+                withContext(Dispatchers.Main.immediate) {
+                    overlay?.hide()
+                    updateNotification("Kullanım erişimi kaldırıldı. Takip durduruldu.")
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+                return
             } catch (_: Exception) {
                 // A transient UsageStats or database issue should not crash the monitoring service.
             }
