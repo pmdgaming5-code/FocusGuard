@@ -26,7 +26,8 @@ data class AppSettings(
     val pinVerifier: String = "",
     val failedPinAttempts: Int = 0,
     val pinLockUntilMillis: Long = 0L,
-    val darkTheme: Boolean = true
+    val darkTheme: Boolean = true,
+    val globalDailyLimitMinutes: Int = 0
 )
 
 class FocusRepository(context: Context) {
@@ -43,6 +44,7 @@ class FocusRepository(context: Context) {
         val pinFailures = intPreferencesKey("pin_failures")
         val pinLockUntil = longPreferencesKey("pin_lock_until")
         val darkTheme = booleanPreferencesKey("dark_theme")
+        val globalDailyLimit = intPreferencesKey("global_daily_limit_minutes")
     }
 
     val settings: Flow<AppSettings> = store.data.map { p ->
@@ -54,7 +56,8 @@ class FocusRepository(context: Context) {
             pinVerifier = p[Keys.pinVerifier] ?: "",
             failedPinAttempts = p[Keys.pinFailures] ?: 0,
             pinLockUntilMillis = p[Keys.pinLockUntil] ?: 0L,
-            darkTheme = p[Keys.darkTheme] ?: true
+            darkTheme = p[Keys.darkTheme] ?: true,
+            globalDailyLimitMinutes = p[Keys.globalDailyLimit] ?: 0
         )
     }
 
@@ -69,6 +72,7 @@ class FocusRepository(context: Context) {
     suspend fun getTrackedApps(): List<TrackedAppEntity> = dao.getTrackedApps()
     suspend fun getTrackedApp(packageName: String): TrackedAppEntity? = dao.getTrackedApp(packageName)
     suspend fun getDailyUsage(packageName: String): Long = dao.getDailyUsage(packageName, todayKey()) ?: 0L
+    suspend fun getTrackedAppsDailyTotal(): Long = dao.getTrackedAppsDailyTotal(todayKey())
 
     suspend fun addUsage(packageName: String, deltaMillis: Long) {
         if (deltaMillis <= 0L) return
@@ -98,6 +102,10 @@ class FocusRepository(context: Context) {
 
     suspend fun setDarkTheme(enabled: Boolean) {
         store.edit { it[Keys.darkTheme] = enabled }
+    }
+
+    suspend fun setGlobalDailyLimit(minutes: Int) {
+        store.edit { it[Keys.globalDailyLimit] = minutes.coerceIn(0, 1440) }
     }
 
     suspend fun savePinRecord(salt: String, verifier: String) {
