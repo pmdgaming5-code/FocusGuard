@@ -344,6 +344,7 @@ private fun AppsScreen(
                                 Text(info.label, fontWeight = FontWeight.SemiBold)
                                 Text(
                                     if (config == null) "Henüz sınır yok"
+                                    else if (!config.limitsEnabled) "Süre sınırları geçici olarak kapalı"
                                     else "Günlük " + limitText(config.dailyLimitMinutes) + " · Oturum " + limitText(config.sessionLimitMinutes),
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
@@ -365,9 +366,9 @@ private fun AppsScreen(
                             } else {
                                 Column(horizontalAlignment = Alignment.End) {
                                     Switch(
-                                        checked = true,
-                                        onCheckedChange = { checked ->
-                                            if (!checked) onRemove(info.packageName)
+                                        checked = config.limitsEnabled,
+                                        onCheckedChange = { enabled ->
+                                            onSave(config.copy(limitsEnabled = enabled))
                                         }
                                     )
                                     TextButton(onClick = { editing = config }) { Text("Düzenle") }
