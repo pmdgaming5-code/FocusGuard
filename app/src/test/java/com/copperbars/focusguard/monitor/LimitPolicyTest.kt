@@ -31,6 +31,13 @@ class LimitPolicyTest {
     }
 
     @Test
+    fun globalDailyLimitUsesAggregateTrackedUsage() {
+        assertFalse(LimitPolicy.isGlobalDailyLimitReached(0, 9_000_000L))
+        assertFalse(LimitPolicy.isGlobalDailyLimitReached(30, 1_799_999L))
+        assertTrue(LimitPolicy.isGlobalDailyLimitReached(30, 1_800_000L))
+    }
+
+    @Test
     fun disabledLimitsDoNotApplyDailyOrSessionThresholds() {
         val app = TrackedAppEntity(
             "sample.app",
