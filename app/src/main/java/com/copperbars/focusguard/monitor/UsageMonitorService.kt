@@ -141,7 +141,7 @@ class UsageMonitorService : Service() {
 
                 val activePackage = foregroundPackage
                 if (powerManager.isInteractive && delta > 0L &&
-                    activePackage != null && activePackage != packageName
+                    activePackage != null && activePackage != this@UsageMonitorService.packageName
                 ) {
                     val app = repository.getTrackedApp(activePackage)
                     if (app != null) {
