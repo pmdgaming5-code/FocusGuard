@@ -31,6 +31,11 @@ class BootResumeReceiver : BroadcastReceiver() {
                 }
             } catch (_: Exception) {
                 // Permission revocation or Android background-start policy can prevent restoration.
+                try {
+                    FocusRepository(appContext).setMonitorEnabled(false)
+                } catch (_: Exception) {
+                    // Keep the receiver failure contained.
+                }
             } finally {
                 pending.finish()
                 job.cancel()
