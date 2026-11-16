@@ -68,6 +68,9 @@ interface FocusDao {
     @Query("SELECT totalMillis FROM daily_usage WHERE packageName = :packageName AND dayKey = :dayKey LIMIT 1")
     suspend fun getDailyUsage(packageName: String, dayKey: String): Long?
 
+    @Query("SELECT COALESCE(SUM(d.totalMillis), 0) FROM daily_usage AS d INNER JOIN tracked_apps AS a ON a.packageName = d.packageName WHERE d.dayKey = :dayKey")
+    suspend fun getTrackedAppsDailyTotal(dayKey: String): Long
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveDailyUsage(usage: DailyUsageEntity)
 
