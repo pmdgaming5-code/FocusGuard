@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Process
 import android.provider.Settings
-import androidx.core.content.ContextCompat
 import com.copperbars.focusguard.data.FocusRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
