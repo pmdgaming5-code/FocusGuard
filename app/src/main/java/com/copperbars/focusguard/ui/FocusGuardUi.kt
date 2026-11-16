@@ -155,6 +155,7 @@ fun FocusGuardRoot(
                     AppTab.APPS -> AppsScreen(
                         installedApps = launchableApps,
                         trackedApps = trackedApps,
+                        usage = usage,
                         onSave = { scope.launch { repository.saveTrackedApp(it) } },
                         onRemove = { scope.launch { repository.removeTrackedApp(it) } }
                     )
@@ -222,7 +223,7 @@ private fun HomeScreen(
         Text("Dijital alışkanlıklarını yönet, hedeflerine odaklan.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Bugünkü kullanım", formatDuration(total), Modifier.weight(1f))
+            MetricCard("Takip edilen uygulama kullanımı", formatDuration(total), Modifier.weight(1f))
             MetricCard("Takip edilen", trackedApps.size.toString(), Modifier.weight(1f))
         }
         if (settings.globalDailyLimitMinutes > 0) {
@@ -323,6 +324,7 @@ private fun StatusLine(label: String, ok: Boolean) {
 private fun AppsScreen(
     installedApps: List<LaunchableApp>,
     trackedApps: List<TrackedAppEntity>,
+    usage: List<DailyUsageEntity>,
     onSave: (TrackedAppEntity) -> Unit,
     onRemove: (String) -> Unit
 ) {
@@ -354,10 +356,26 @@ private fun AppsScreen(
                                 Text(
                                     if (config == null) "Henüz sınır yok"
                                     else if (!config.limitsEnabled) "Süre sınırları geçici olarak kapalı"
-                                    else "Günlük " + limitText(config.dailyLimitMinutes) + " · Oturum " + limitText(config.sessionLimitMinutes),
+                                    else {
+                                        val used = usage.firstOrNull { it.packageName == config.packageName }?.totalMillis ?: 0L
+                                        val remaining = if (config.dailyLimitMinutes > 0) {
+                                            (config.dailyLimitMinutes * 60_000L - used).coerceAtLeast(0L)
+                                        } else 0L
+                                        "Bugün: " + formatDuration(used) +
+                                            if (config.dailyLimitMinutes > 0) " · Kalan: " + formatDuration(remaining)
+                                            else " · Günlük limitsiz"
+                                    },
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
+                                if (config != null && config.limitsEnabled && config.sessionLimitMinutes > 0) {
+                                    Text(
+                                        "Oturum: " + formatDuration(config.sessionUsageMillis) +
+                                            " / " + config.sessionLimitMinutes + " dk",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                                 if (config?.focusBlocked == true) {
                                     Text("Odak modunda engellenecek", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                                 }
