@@ -65,7 +65,7 @@ class UsageMonitorService : Service() {
         super.onCreate()
         repository = FocusRepository(applicationContext)
         pinSecurity = PinSecurity(repository)
-        overlay = UsageOverlay(this) { pin -> verifyOverlayPin(pin) }
+        overlay = UsageOverlay(this) { pin, minutes -> verifyOverlayPin(pin, minutes) }
         createNotificationChannel()
     }
 
@@ -122,6 +122,7 @@ class UsageMonitorService : Service() {
                             val previous = foregroundPackage
                             if (previous != null && previous != packageName) {
                                 repository.resetSessionUsage(previous)
+                                bypassUntilElapsed.remove(previous)
                             }
                             foregroundPackage = packageName
                         }
@@ -129,6 +130,7 @@ class UsageMonitorService : Service() {
                             if (foregroundPackage == packageName) {
                                 foregroundPackage = null
                                 repository.resetSessionUsage(packageName)
+                                bypassUntilElapsed.remove(packageName)
                             }
                         }
                     }
@@ -208,13 +210,17 @@ class UsageMonitorService : Service() {
         }
     }
 
-    private fun verifyOverlayPin(pin: String) {
+    private fun verifyOverlayPin(pin: String, unlockMinutes: Int) {
         scope.launch {
             when (val result = pinSecurity.verify(pin)) {
                 PinCheck.Success -> {
                     val packageName = blockedPackage
                     if (packageName != null) {
-                        bypassUntilElapsed[packageName] = SystemClock.elapsedRealtime() + 5 * 60_000L
+                        bypassUntilElapsed[packageName] = if (unlockMinutes == 0) {
+                            Long.MAX_VALUE
+                        } else {
+                            SystemClock.elapsedRealtime() + unlockMinutes.coerceIn(1, 15) * 60_000L
+                        }
                     }
                     withContext(Dispatchers.Main.immediate) { overlay?.hide() }
                     blockedPackage = null
