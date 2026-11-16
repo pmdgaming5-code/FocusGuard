@@ -20,7 +20,7 @@ import android.os.Build
 
 class UsageOverlay(
     private val context: Context,
-    private val onPinSubmitted: (String) -> Unit
+    private val onPinSubmitted: (String, Int) -> Unit
 ) {
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private var root: View? = null
@@ -90,22 +90,33 @@ class UsageOverlay(
             gravity = Gravity.CENTER
             setPadding(0, dp(9), 0, dp(9))
         }
-        val unlock = Button(context).apply {
-            text = "5 DAKİKA İZİN VER"
-            isAllCaps = false
-            textSize = 15f
-            setTextColor(0xFFFFFFFF.toInt())
-            background = rounded(0xFF666FEA.toInt(), dp(16))
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            setOnClickListener {
-                val value = pin.text?.toString().orEmpty()
-                if (value.isBlank()) {
-                    error.text = "Önce PIN kodunu gir."
-                    return@setOnClickListener
+        val choices = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        listOf(5, 10, 15, 0).forEach { minutes ->
+            val choice = Button(context).apply {
+                text = if (minutes == 0) "Oturum" else "$minutes dk"
+                isAllCaps = false
+                textSize = 12f
+                setTextColor(0xFFFFFFFF.toInt())
+                background = rounded(0xFF666FEA.toInt(), dp(12))
+                setPadding(dp(5), dp(7), dp(5), dp(7))
+                setOnClickListener {
+                    val value = pin.text?.toString().orEmpty()
+                    if (value.isBlank()) {
+                        error.text = "Önce PIN kodunu gir."
+                        return@setOnClickListener
+                    }
+                    error.text = "Kontrol ediliyor…"
+                    onPinSubmitted(value, minutes)
                 }
-                error.text = "Kontrol ediliyor…"
-                onPinSubmitted(value)
             }
+            val buttonParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginStart = dp(3)
+                marginEnd = dp(3)
+            }
+            choices.addView(choice, buttonParams)
         }
 
         card.addView(title, matchWrap())
@@ -114,7 +125,7 @@ class UsageOverlay(
         card.addView(body, matchWrap())
         card.addView(pin, matchWrap())
         card.addView(error, matchWrap())
-        card.addView(unlock, matchWrap())
+        card.addView(choices, matchWrap())
 
         val params = FrameLayout.LayoutParams(
             (context.resources.displayMetrics.widthPixels * 0.88f).toInt(),
