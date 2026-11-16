@@ -2,6 +2,7 @@ package com.copperbars.focusguard.data
 
 import android.content.Context
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
@@ -22,7 +23,7 @@ data class TrackedAppEntity(
     val sessionLimitMinutes: Int = 0,
     val focusBlocked: Boolean = false,
     val sessionUsageMillis: Long = 0L,
-    val limitsEnabled: Boolean = true
+    @ColumnInfo(defaultValue = "1") val limitsEnabled: Boolean = true
 )
 
 @Entity(tableName = "daily_usage", primaryKeys = ["packageName", "dayKey"])
