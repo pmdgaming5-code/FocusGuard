@@ -3,6 +3,7 @@ package com.copperbars.focusguard.ui
 import android.app.Activity
 import android.content.Context
 import android.widget.Toast
+import android.telecom.TelecomManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -634,8 +635,10 @@ private fun DeviceLockScreen(
             },
             confirmButton = {
                 Button(onClick = {
+                    val defaultDialer = activity.getSystemService(TelecomManager::class.java)
+                        ?.defaultDialerPackage
                     val allowed = trackedApps.filter { !it.focusBlocked }.map { it.packageName } +
-                        listOf("com.android.settings", "com.android.phone")
+                        listOfNotNull("com.android.settings", defaultDialer)
                     info = when (val result = KioskController.start(activity, allowed)) {
                         KioskResult.Started -> "Kiosk modu başlatıldı."
                         KioskResult.DeviceOwnerRequired -> "Bu cihaz Device Owner olarak yapılandırılmamış."
