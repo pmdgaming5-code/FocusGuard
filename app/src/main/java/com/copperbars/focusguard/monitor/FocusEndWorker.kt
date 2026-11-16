@@ -9,8 +9,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.flow.first
 import com.copperbars.focusguard.MainActivity
-import com.copperbars.focusguard.R
 import com.copperbars.focusguard.data.FocusRepository
 
 class FocusEndWorker(
@@ -25,9 +25,10 @@ class FocusEndWorker(
 
     override suspend fun doWork(): Result {
         val repository = FocusRepository(applicationContext)
-        val before = repository.settings
+        val before = repository.settings.first()
+        if (before.focusUntilMillis <= 0L) return Result.success()
+        if (before.focusUntilMillis > System.currentTimeMillis()) return Result.retry()
         repository.finishExpiredFocusSession()
-        val nowActive = repository.settings
         // WorkManager is persistent; the service also checks the stored end timestamp.
         showCompletionNotification()
         return Result.success()
